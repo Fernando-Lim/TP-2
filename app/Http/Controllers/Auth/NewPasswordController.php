@@ -32,7 +32,13 @@ class NewPasswordController extends Controller
         $request->validate([
             'token' => ['required'],
             'email' => ['required', 'email'],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'password' => ['required',
+                          'confirmed',
+                          'string',
+                          'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d])[\s\S]{10,}$/']
+        ],
+        [
+            'password.regex' => 'The :attribute must be at least 10 characters long and include at least uppercase letter, lowercase letter, numeric character, and symbol.',
         ]);
 
         // Here we will attempt to reset the user's password. If it is successful we
