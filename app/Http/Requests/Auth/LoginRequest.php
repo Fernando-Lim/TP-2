@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Http\Custom\CustomRateLimiter;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -43,15 +44,17 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
+        $limiter = app(CustomRateLimiter::class); // Instantiate an instance of CustomRateLimiter
+
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
-            RateLimiter::hit($this->throttleKey());
+            $limiter->hit($this->throttleKey());
 
             throw ValidationException::withMessages([
                 'email' => trans('auth.failed'),
             ]);
         }
 
-        RateLimiter::clear($this->throttleKey());
+        $limiter->clear($this->throttleKey());
     }
 
     /**
@@ -61,13 +64,15 @@ class LoginRequest extends FormRequest
      */
     public function ensureIsNotRateLimited(): void
     {
-        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 3)) {
+        $limiter = app(CustomRateLimiter::class); // Instantiate an instance of CustomRateLimiter
+
+        if (! $limiter->tooManyAttempts($this->throttleKey(), 3)) {
             return;
         }
 
         event(new Lockout($this));
 
-        $seconds = RateLimiter::availableIn($this->throttleKey());
+        $seconds = $limiter->availableIn($this->throttleKey());
 
         throw ValidationException::withMessages([
             'email' => trans('auth.throttle', [
